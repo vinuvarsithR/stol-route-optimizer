@@ -1,0 +1,6 @@
+Flask==3.0.3
+networkx==3.3
+gunicorn==22.0.0
+scikit-learn
+numpy
+pandas

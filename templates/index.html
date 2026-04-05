@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>STOL Route Optimizer — LAT Aerospace</title>
+  <!-- Leaflet — free, no API key needed -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-icon-wrap"><i class="ph-fill ph-airplane-takeoff"></i></div>
+      <div>
+        <div class="logo-title">STOL Route Optimizer</div>
+        <div class="logo-sub">LAT Aerospace · Graph Intelligence + ML Demand Prediction</div>
+      </div>
+    </div>
+    <div class="header-right-group">
+      <div class="live-badge"><span class="pulse-dot"></span>Network Live</div>
+      <div class="phase-pill">Phase 4</div>
+    </div>
+  </div>
+</header>
+
+<div class="stats-strip">
+  <div class="stat-item"><span class="stat-val" id="stat-cities">—</span><span class="stat-key">Airports</span></div>
+  <div class="stat-divider"></div>
+  <div class="stat-item"><span class="stat-val" id="stat-routes">—</span><span class="stat-key">Routes</span></div>
+  <div class="stat-divider"></div>
+  <div class="stat-item stol-stat"><span class="stat-val" id="stat-stol">—</span><span class="stat-key">STOL Airports</span></div>
+  <div class="stat-divider"></div>
+  <div class="stat-item stol-stat"><span class="stat-val" id="stat-stol-routes">—</span><span class="stat-key">STOL Routes</span></div>
+  <div class="stat-divider"></div>
+  <div class="stat-item"><span class="stat-val mono">RF · 200T</span><span class="stat-key">ML Model</span></div>
+  <div class="stat-divider"></div>
+  <div class="stat-item"><span class="stat-val mono">R²=0.95</span><span class="stat-key">Accuracy</span></div>
+</div>
+
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="section-label"><i class="ph ph-path"></i> Route</div>
+      <div class="form-group">
+        <label>Origin</label>
+        <div class="select-box"><i class="ph ph-airplane-takeoff select-icon"></i>
+          <select id="source" class="sel"><option value="">Select city...</option></select>
+        </div>
+      </div>
+      <button class="swap-btn" id="swap-btn"><i class="ph ph-arrows-down-up"></i></button>
+      <div class="form-group">
+        <label>Destination</label>
+        <div class="select-box"><i class="ph ph-airplane-landing select-icon"></i>
+          <select id="destination" class="sel"><option value="">Select city...</option></select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Optimize for</label>
+        <div class="pill-group" id="optimize-for">
+          <button class="pill active" data-value="cost"><i class="ph ph-currency-inr"></i>Cost</button>
+          <button class="pill" data-value="time"><i class="ph ph-clock"></i>Time</button>
+          <button class="pill" data-value="distance"><i class="ph ph-ruler"></i>Dist</button>
+        </div>
+      </div>
+      <label class="toggle-row">
+        <div class="toggle-info"><span class="toggle-title">STOL-only mode</span><span class="toggle-sub">Exclude non-STOL airports</span></div>
+        <div class="toggle-switch"><input type="checkbox" id="stol-only"/><span class="toggle-track"><span class="toggle-thumb"></span></span></div>
+      </label>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label"><i class="ph ph-airplane"></i> Aircraft</div>
+      <div class="form-group">
+        <label>Type</label>
+        <div class="select-box"><i class="ph ph-airplane select-icon"></i>
+          <select id="aircraft-select" class="sel"><option value="">Loading...</option></select>
+        </div>
+      </div>
+      <div class="aircraft-card hidden" id="aircraft-card">
+        <div class="ac-row"><span>Seats</span><span id="ac-seats">—</span></div>
+        <div class="ac-row"><span>STOL TODR</span><span id="ac-todr">—</span></div>
+        <div class="ac-row"><span>Max Range</span><span id="ac-range">—</span></div>
+        <div class="ac-row"><span>Cruise</span><span id="ac-speed">—</span></div>
+      </div>
+      <div class="form-group">
+        <label>Payload <span class="payload-badge" id="payload-badge">720 kg · ~9 pax</span></label>
+        <input type="range" id="payload-slider" class="range-input" min="0" max="900" value="720" step="10"/>
+        <div class="range-labels"><span>0 kg</span><span id="payload-max-label">900 kg</span></div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label"><i class="ph ph-chart-bar"></i> Demand Forecast</div>
+      <div class="form-group">
+        <label>Season</label>
+        <div class="pill-group" id="season-select">
+          <button class="pill" data-value="1"><i class="ph ph-snowflake"></i>Win</button>
+          <button class="pill active" data-value="2"><i class="ph ph-flower"></i>Spr</button>
+          <button class="pill" data-value="3"><i class="ph ph-sun"></i>Sum</button>
+          <button class="pill" data-value="4"><i class="ph ph-leaf"></i>Aut</button>
+        </div>
+      </div>
+      <label class="toggle-row">
+        <div class="toggle-info"><span class="toggle-title">Weekend traffic</span><span class="toggle-sub">Higher leisure demand</span></div>
+        <div class="toggle-switch"><input type="checkbox" id="is-weekend"/><span class="toggle-track"><span class="toggle-thumb"></span></span></div>
+      </label>
+    </div>
+
+    <button class="run-btn" id="find-route-btn">
+      <i class="ph ph-magnifying-glass"></i><span>Optimize &amp; Analyze</span>
+    </button>
+
+    <div class="algo-card">
+      <div class="algo-header"><i class="ph ph-brain"></i> Stack</div>
+      <div class="algo-steps">
+        <div class="algo-step"><span class="step-num">01</span><span>Dijkstra's shortest path</span></div>
+        <div class="algo-step"><span class="step-num">02</span><span>Density altitude physics</span></div>
+        <div class="algo-step"><span class="step-num">03</span><span>Random Forest demand ML</span></div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="content">
+    <div class="empty-state" id="empty-state">
+      <!-- Leaflet map as decorative background — always visible -->
+      <div id="empty-map"></div>
+      <div class="empty-overlay">
+        <i class="ph ph-airplane-tilt empty-icon"></i>
+        <p>Select an origin and destination to compute the optimal STOL route</p>
+      </div>
+    </div>
+
+    <div class="loading-state hidden" id="loading-state">
+      <div class="loading-ring"></div>
+      <div class="loading-steps">
+        <div class="load-step" id="ls1">① Running Dijkstra's optimizer…</div>
+        <div class="load-step" id="ls2">② Checking STOL constraints…</div>
+        <div class="load-step" id="ls3">③ Predicting passenger demand…</div>
+      </div>
+    </div>
+
+    <div class="error-state hidden" id="error-state">
+      <i class="ph ph-warning-octagon"></i>
+      <p id="error-message">Something went wrong.</p>
+      <button onclick="showState('empty')" class="retry-btn">Try Again</button>
+    </div>
+
+    <div class="results hidden" id="results">
+      <div class="route-banner">
+        <div class="rb-left">
+          <div class="rb-cities">
+            <span class="rb-city" id="rb-from">—</span>
+            <div class="rb-arrow-wrap"><div class="rb-line"></div><i class="ph-fill ph-airplane rb-plane"></i></div>
+            <span class="rb-city" id="rb-to">—</span>
+          </div>
+          <div class="rb-meta" id="rb-meta">—</div>
+        </div>
+        <div class="rb-right">
+          <div class="score-dial">
+            <svg viewBox="0 0 80 80" class="dial-svg">
+              <circle cx="40" cy="40" r="34" class="dial-track"/>
+              <circle cx="40" cy="40" r="34" class="dial-fill" id="dial-circle"/>
+            </svg>
+            <div class="dial-inner"><span class="dial-val" id="dial-val">—</span><span class="dial-label">Score</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert-bar alert-error hidden" id="issues-banner">
+        <i class="ph ph-x-circle"></i><div><strong>Critical issues</strong><ul id="issues-list"></ul></div>
+      </div>
+      <div class="alert-bar alert-success hidden" id="clear-banner">
+        <i class="ph ph-check-circle"></i><span>All airports are physically feasible for selected aircraft and payload.</span>
+      </div>
+      <div class="alert-bar alert-warn hidden" id="stol-warning">
+        <i class="ph ph-warning"></i><span id="stol-warning-text"></span>
+      </div>
+
+      <div class="kpi-row">
+        <div class="kpi cost"><div class="kpi-icon"><i class="ph-fill ph-currency-inr"></i></div><div class="kpi-val" id="total-cost">—</div><div class="kpi-key">Total Cost</div></div>
+        <div class="kpi time"><div class="kpi-icon"><i class="ph-fill ph-clock"></i></div><div class="kpi-val" id="total-time">—</div><div class="kpi-key">Flight Time</div></div>
+        <div class="kpi dist"><div class="kpi-icon"><i class="ph-fill ph-arrows-horizontal"></i></div><div class="kpi-val" id="total-distance">—</div><div class="kpi-key">Distance</div></div>
+        <div class="kpi stops"><div class="kpi-icon"><i class="ph-fill ph-map-pin"></i></div><div class="kpi-val" id="total-stops">—</div><div class="kpi-key">Stops</div></div>
+      </div>
+
+      <div class="panel map-panel">
+        <div class="panel-header"><i class="ph ph-map-trifold"></i> Route Map<span class="panel-sub">Click markers for airport details</span></div>
+        <div id="route-map"></div>
+        <div class="map-legend">
+          <span class="legend-item"><span class="legend-dot stol"></span>STOL Airport</span>
+          <span class="legend-item"><span class="legend-dot non-stol"></span>Non-STOL</span>
+          <span class="legend-item"><span class="legend-line"></span>Optimized Route</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header"><i class="ph ph-chart-bar"></i> ML Demand Forecast<span class="panel-tag">Random Forest · 200 trees</span></div>
+        <div class="demand-kpis" id="demand-kpis"></div>
+        <div class="demand-legs" id="demand-legs"></div>
+        <div class="two-col">
+          <div><div class="sub-label">Seasonal forecast (first leg)</div><div class="season-bars" id="season-bars"></div></div>
+          <div><div class="sub-label">Top demand drivers</div><div class="fi-list" id="fi-list"></div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header"><i class="ph ph-gauge"></i> Airport STOL Feasibility<span class="panel-sub">Density altitude · runway margins</span></div>
+        <div class="feas-grid" id="feas-grid"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header"><i class="ph ph-arrows-horizontal"></i> Payload-Range Analysis</div>
+        <div class="range-summary" id="range-summary"></div>
+        <div class="range-bars" id="range-bars"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header"><i class="ph ph-list-bullets"></i> Segment Breakdown</div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>From</th><th>To</th><th>Dist</th><th>Time</th><th>Cost</th><th>STOL</th></tr></thead>
+            <tbody id="legs-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<footer class="site-footer">
+  <span>STOL Route Optimizer · Built for <strong>LAT Aerospace</strong> internship application</span>
+  <span>Dijkstra's Algorithm · Density Altitude Physics · Random Forest ML</span>
+</footer>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
