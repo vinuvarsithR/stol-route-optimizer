@@ -1,11 +1,11 @@
-# ✈ STOL Route Optimizer
+# STOL Route Optimizer
 
 > A full-stack web application that computes optimal flight routes across India, with a focus on **Short Takeoff and Landing (STOL)** aircraft constraints.  
 > Built as a demonstration project targeting **LAT Aerospace** — an Indian startup developing next-gen STOL aircraft for underserved regional connectivity.
 
 ---
 
-## 🔍 What It Does
+##  What It Does
 
 - Models Indian airports as a **weighted graph** (NetworkX)
 - Finds optimal routes using **Dijkstra's Shortest Path Algorithm**
@@ -15,7 +15,7 @@
 
 ---
 
-## 🧠 Tech Stack
+##  Tech Stack
 
 | Layer       | Tech                          |
 |-------------|-------------------------------|
@@ -27,7 +27,7 @@
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 stol-route-optimizer/
@@ -47,7 +47,7 @@ stol-route-optimizer/
 
 ---
 
-## 🚀 Run Locally
+## Run Locally
 
 ```bash
 # 1. Clone the repo
@@ -70,7 +70,7 @@ python app.py
 
 ---
 
-## 🛣 Roadmap
+## Roadmap
 
 | Phase | Feature                        | Status      |
 |-------|--------------------------------|-------------|
@@ -82,7 +82,7 @@ python app.py
 
 ---
 
-## 🔬 Algorithm Notes
+## Algorithm Notes
 
 The optimizer models airports as graph **nodes** and routes as weighted **edges**.  
 Edge weights are computed from:
